@@ -1,0 +1,1443 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>血糖记录</title>
+    <!-- 引入字体图标 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
+    <style>
+        /* 全局样式重置 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "微软雅黑", sans-serif;
+        }
+        body {
+            background: #f5f7fa;
+            color: #333;
+            padding: 20px;
+            max-width: 700px;
+            margin: 0 auto;
+            padding-bottom: 70px; /* 为底部操作栏留出空间 */
+        }
+        /* 标题样式 */
+        h1, h2 {
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        h1 { font-size: 28px; }
+        h2 { font-size: 20px; color: #444; }
+
+        /* 导航标签 */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0 20px;
+        }
+        .tabs button {
+            background: #e8edf2;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            flex: 1;
+            text-align: center;
+        }
+        .tabs button:hover { background: #dce1e6; }
+        .tabs button.active {
+            background: #007bff;
+            color: #fff;
+        }
+
+        /* 卡片容器 */
+        .card {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            transition: all 0.3s;
+        }
+        .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+
+        /* 输入表单 */
+        .form-group {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+        .form-group label {
+            margin-bottom: 4px;
+            font-size: 14px;
+            color: #666;
+        }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            border-color: #007bff;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(0,123,255,0.1);
+        }
+
+        /* 按钮样式 */
+        .btn {
+            background: #007bff;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-right: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+        }
+        .btn:hover { background: #005fe0; }
+        .btn-secondary {
+            background: #eee;
+            color: #333;
+        }
+        .btn-secondary:hover { background: #ddd; }
+        .btn-danger {
+            background: #dc3545;
+            color: #fff;
+        }
+        .btn-danger:hover { background: #c82333; }
+        .btn i {
+            margin-right: 5px;
+        }
+
+        /* 运动记录动态项 */
+        .exercise-item {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .exercise-item input { flex: 1; }
+
+        /* 历史记录样式 */
+        .history-week {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f9fafc;
+            border-radius: 6px;
+        }
+        .history-week h3 {
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: #007bff;
+        }
+        .history-record {
+            margin-left: 0;
+            padding: 10px;
+            background: #fff;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            transition: all 0.2s;
+            position: relative;
+            border-left: 3px solid transparent;
+        }
+        .history-record:hover {
+            border-left-color: #007bff;
+        }
+        .history-record.expanded {
+            border-left-color: #007bff;
+            background: #f8fafc;
+        }
+        .history-record .record-header {
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .history-record .record-header h4 {
+            font-size: 16px;
+            color: #007bff;
+        }
+        .history-record .record-details {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+            display: none;
+        }
+        .history-record.expanded .record-details {
+            display: block;
+        }
+        .history-record .record-actions {
+            margin-top: 10px;
+            display: none;
+        }
+        .history-record.expanded .record-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        .multi-select-mode .history-record {
+            cursor: pointer;
+        }
+        .multi-select-mode .history-record::before {
+            content: '';
+            position: absolute;
+            left: -10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid #ddd;
+            background: #fff;
+        }
+        .multi-select-mode .history-record.selected::before {
+            background: #007bff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white' width='18px' height='18px'%3E%3Cpath d='M0 0h24v24H0z' fill='none'/%3E%3Cpath d='M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z'/%3E%3C/svg%3E") no-repeat center;
+            border-color: #007bff;
+        }
+
+        /* 底部操作栏 */
+        .action-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: #fff;
+            padding: 15px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            display: none;
+            justify-content: center;
+            gap: 15px;
+            z-index: 50;
+        }
+        .action-bar.active {
+            display: flex;
+        }
+
+        /* 复制成功提示 */
+        #copySuccess {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 100;
+        }
+        #copySuccess.show {
+            opacity: 1;
+        }
+
+        /* 响应式适配 */
+        @media (max-width: 500px) {
+            body {
+                padding: 10px;
+            }
+            .form-group { width: 100%; }
+            .exercise-item { flex-direction: column; gap: 5px; }
+            .exercise-item input { width: 100%; }
+            .action-bar {
+                flex-wrap: wrap;
+                padding: 10px;
+            }
+            .action-bar button {
+                flex: 1;
+                margin: 5px;
+                font-size: 12px;
+                padding: 8px 10px;
+            }
+            .tabs button {
+                padding: 8px 10px;
+                font-size: 14px;
+            }
+            .medication-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .medication-name {
+                width: 100%;
+                margin-bottom: 5px;
+            }
+            .medication-dosage {
+                width: 100%;
+            }
+        }
+
+        /* 表单验证样式 */
+        .form-group.has-error input {
+            border-color: #dc3545;
+            box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.1);
+        }
+        .error-message {
+            color: #dc3545;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+
+        /* 药物选择样式 */
+        .medication-selector {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .medication-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            background: #f8fafd;
+            border-radius: 6px;
+            border: 1px solid #e0e6ef;
+        }
+        .medication-name {
+            flex: 1;
+            font-weight: 500;
+            color: #333;
+        }
+        .medication-dosage {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .medication-dosage input {
+            width: 80px;
+            padding: 6px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .medication-dosage select {
+            padding: 6px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: #fff;
+        }
+        .add-medication-btn {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: #f0f0f0;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 5px;
+            transition: all 0.3s;
+        }
+        .add-medication-btn:hover {
+            background: #e0e0e0;
+        }
+
+        /* 药物管理模态框 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 200;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90%;
+            overflow-y: auto;
+            position: relative;
+        }
+        .modal-header {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .modal-close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #666;
+        }
+        .medication-list {
+            margin-bottom: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .medication-list-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .medication-list-item input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+        .new-medication {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .new-medication input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        /* 复制辅助元素 */
+        #copyHelper {
+            position: absolute;
+            left: -9999px;
+        }
+
+        /* 药物单位选择器 */
+        .unit-selector {
+            min-width: 80px;
+        }
+    </style>
+</head>
+<body>
+<!-- 标题与日期 -->
+<h1>血糖记录</h1>
+<div id="currentDate" style="font-size: 14px; color: #666; margin-bottom: 10px;"></div>
+
+<!-- 导航标签 -->
+<div class="tabs">
+    <button id="tabHome" class="active" onclick="switchTab('home')">首页</button>
+    <button id="tabHistory" onclick="switchTab('history')">历史</button>
+</div>
+
+<!-- 首页内容 -->
+<div id="homeView">
+    <!-- 血糖记录卡片 -->
+    <div class="card">
+        <h2>血糖数据</h2>
+        <div class="form-group" id="form-group-fasting">
+            <label>早餐空腹</label>
+            <input type="number" step="0.1" id="fasting" placeholder="血糖值（mmol/L）" />
+            <div class="error-message" id="error-fasting"></div>
+        </div>
+        <div class="form-group" id="form-group-breakfast">
+            <label>早餐后2小时</label>
+            <input type="number" step="0.1" id="breakfast" placeholder="血糖值（mmol/L）" />
+            <div class="error-message" id="error-breakfast"></div>
+        </div>
+        <div class="form-group" id="form-group-lunch">
+            <label>午餐后2小时</label>
+            <input type="number" step="0.1" id="lunch" placeholder="血糖值（mmol/L）" />
+            <div class="error-message" id="error-lunch"></div>
+        </div>
+        <div class="form-group" id="form-group-dinner">
+            <label>晚餐后2小时</label>
+            <input type="number" step="0.1" id="dinner" placeholder="血糖值（mmol/L）" />
+            <div class="error-message" id="error-dinner"></div>
+        </div>
+    </div>
+
+    <!-- 运动记录卡片 -->
+    <div class="card">
+        <h2>运动记录</h2>
+        <button class="btn btn-secondary" onclick="addExercise()">
+            <i class="bi bi-plus-circle"></i> 添加运动
+        </button>
+        <div id="exerciseList"></div>
+    </div>
+
+    <!-- 其他信息卡片 -->
+    <div class="card">
+        <h2>其他信息</h2>
+        <div class="form-group">
+            <label>用药情况</label>
+            <div id="medicationContainer">
+                <!-- 药物选择器将在这里动态生成 -->
+            </div>
+            <button class="add-medication-btn" onclick="openMedicationManager()">
+                <i class="bi bi-plus-circle"></i> 管理药物
+            </button>
+        </div>
+        <div class="form-group">
+            <label>备注</label>
+            <textarea id="notes" rows="3" placeholder="请输入备注信息"></textarea>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button class="btn" onclick="saveRecord()" style="flex: 1;">
+                <i class="bi bi-save"></i> 保存记录
+            </button>
+            <button class="btn btn-secondary" onclick="resetForm()" style="flex: 1;">
+                <i class="bi bi-arrow-counterclockwise"></i> 重置
+            </button>
+        </div>
+        <div id="saveSuccess" style="color: green; margin-top: 10px; display: none;">记录保存成功！</div>
+    </div>
+</div>
+
+<!-- 历史记录内容 -->
+<div id="historyView" style="display: none;">
+    <h2>历史记录</h2>
+    <div id="historyList">
+        <!-- 动态插入周分组记录 -->
+    </div>
+    <div id="emptyHistory" style="display: none; text-align: center; padding: 40px 0; color: #666;">
+        <i class="bi bi-file-earmark-medical" style="font-size: 48px; color: #ccc;"></i>
+        <p style="margin-top: 10px;">暂无血糖记录</p>
+        <button class="btn" style="margin-top: 15px;" onclick="switchTab('home')">
+            <i class="bi bi-plus-circle"></i> 添加记录
+        </button>
+    </div>
+</div>
+
+<!-- 编辑记录模态框 -->
+<div id="editRecordModal" class="modal">
+    <div class="modal-content">
+        <h2>编辑记录</h2>
+        <div id="editRecordForm">
+            <!-- 编辑表单内容将动态生成 -->
+        </div>
+        <div class="action-bar" style="position: static; display: flex; margin-top: 15px;">
+            <button class="btn" onclick="updateRecord()">
+                <i class="bi bi-check"></i> 保存修改
+            </button>
+            <button class="btn btn-secondary" onclick="closeEditModal()">
+                <i class="bi bi-x"></i> 取消
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- 药物管理模态框 -->
+<div id="medicationManagerModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>管理药物</h2>
+            <button class="modal-close" onclick="closeMedicationManager()">&times;</button>
+        </div>
+        <div class="medication-list" id="medicationList">
+            <!-- 药物列表将在这里动态生成 -->
+        </div>
+        <div class="new-medication">
+            <input type="text" id="newMedicationName" placeholder="输入新药名" />
+            <button class="btn" onclick="addNewMedication()">
+                <i class="bi bi-plus"></i> 添加
+            </button>
+        </div>
+        <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+            <button class="btn" onclick="saveMedications()">
+                <i class="bi bi-save"></i> 保存
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- 底部操作栏 -->
+<div id="multiSelectActionBar" class="action-bar">
+    <button class="btn" onclick="copySelectedRecords()">
+        <i class="bi bi-clipboard"></i> 复制记录
+    </button>
+    <button class="btn btn-danger" onclick="deleteSelectedRecords()">
+        <i class="bi bi-trash"></i> 删除
+    </button>
+    <button class="btn btn-secondary" onclick="exitMultiSelectMode()">
+        <i class="bi bi-arrow-left"></i> 取消
+    </button>
+</div>
+
+<!-- 复制成功提示 -->
+<div id="copySuccess">记录已复制到剪贴板！</div>
+
+<!-- 复制辅助元素 -->
+<textarea id="copyHelper"></textarea>
+
+<script>
+    // 全局变量
+    let records = JSON.parse(localStorage.getItem('bloodSugarRecords')) || [];
+    let currentDate = new Date();
+    let selectedRecordIndex = -1;
+    let selectedRecordIds = [];
+    let isMultiSelectMode = false;
+    let originalRecord = null; // 用于编辑时保存原始记录
+    let medications = JSON.parse(localStorage.getItem('medications')) || [
+        { id: 1, name: "阿托伐他汀钙片" },
+        { id: 2, name: "非洛地平缓释片" },
+        { id: 3, name: "格列美脲片" },
+        { id: 4, name: "二甲双胍缓释片" }
+    ];
+    let selectedMedications = []; // 当前选中的药物及剂量
+
+    // 初始化
+    document.addEventListener('DOMContentLoaded', function() {
+        updateCurrentDate(currentDate);
+        renderMedications();
+        renderHistory();
+
+        // 添加表单验证事件监听
+        document.getElementById('fasting').addEventListener('blur', validateFasting);
+        document.getElementById('breakfast').addEventListener('blur', validateBreakfast);
+        document.getElementById('lunch').addEventListener('blur', validateLunch);
+        document.getElementById('dinner').addEventListener('blur', validateDinner);
+    });
+
+    // 渲染药物选择器
+    function renderMedications() {
+        const container = document.getElementById('medicationContainer');
+        container.innerHTML = '';
+
+        // 创建药物选择器
+        const selector = document.createElement('div');
+        selector.className = 'medication-selector';
+
+        medications.forEach(med => {
+            const existingMed = selectedMedications.find(m => m.id === med.id);
+            const medItem = document.createElement('div');
+            medItem.className = 'medication-item';
+            medItem.innerHTML = `
+                <div class="medication-name">${med.name}</div>
+                <div class="medication-dosage">
+                    <input type="number" min="0" step="0.5"
+                        value="${existingMed ? existingMed.quantity : ''}"
+                        placeholder="数量"
+                        oninput="updateMedicationQuantity(${med.id}, this.value)"
+                        onfocus="this.select()">
+                    <select class="unit-selector" onchange="updateMedicationUnit(${med.id}, this.value)">
+                        <option value="片" ${(existingMed && existingMed.unit === '片') ? 'selected' : ''}>片</option>
+                        <option value="粒" ${(existingMed && existingMed.unit === '粒') ? 'selected' : ''}>粒</option>
+                        <option value="mg" ${(existingMed && existingMed.unit === 'mg') ? 'selected' : ''}>mg</option>
+                        <option value="ml" ${(existingMed && existingMed.unit === 'ml') ? 'selected' : ''}>ml</option>
+                        <option value="单位" ${(existingMed && existingMed.unit === '单位') ? 'selected' : ''}>单位</option>
+                    </select>
+                </div>
+            `;
+            selector.appendChild(medItem);
+        });
+
+        container.appendChild(selector);
+    }
+
+    // 更新药物数量
+    function updateMedicationQuantity(medId, quantity) {
+        // 转换为数字
+        const qty = parseFloat(quantity);
+
+        // 查找是否已经存在
+        let medIndex = selectedMedications.findIndex(m => m.id === medId);
+
+        if (medIndex === -1) {
+            // 添加新药物
+            const med = medications.find(m => m.id === medId);
+            if (med) {
+                selectedMedications.push({
+                    id: medId,
+                    name: med.name,
+                    quantity: qty,
+                    unit: '片' // 默认单位
+                });
+            }
+        } else {
+            // 更新现有药物
+            if (isNaN(qty)) {
+                // 如果输入无效，移除该药物
+                selectedMedications.splice(medIndex, 1);
+            } else {
+                selectedMedications[medIndex].quantity = qty;
+            }
+        }
+    }
+
+    // 更新药物单位
+    function updateMedicationUnit(medId, unit) {
+        // 查找是否已经存在
+        let medIndex = selectedMedications.findIndex(m => m.id === medId);
+
+        if (medIndex === -1) {
+            // 如果药物不存在，添加新记录
+            const med = medications.find(m => m.id === medId);
+            if (med) {
+                selectedMedications.push({
+                    id: medId,
+                    name: med.name,
+                    quantity: 1,
+                    unit: unit
+                });
+            }
+        } else {
+            // 更新单位
+            selectedMedications[medIndex].unit = unit;
+        }
+    }
+
+    // 打开药物管理器
+    function openMedicationManager() {
+        renderMedicationList();
+        document.getElementById('medicationManagerModal').style.display = 'flex';
+    }
+
+    // 关闭药物管理器
+    function closeMedicationManager() {
+        document.getElementById('medicationManagerModal').style.display = 'none';
+    }
+
+    // 渲染药物列表
+    function renderMedicationList() {
+        const container = document.getElementById('medicationList');
+        container.innerHTML = '';
+
+        medications.forEach((med, index) => {
+            const medItem = document.createElement('div');
+            medItem.className = 'medication-list-item';
+            medItem.innerHTML = `
+                <input type="text" value="${med.name}" onchange="updateMedicationName(${index}, this.value)" placeholder="药名" />
+                <button class="btn btn-danger" onclick="deleteMedication(${index})">
+                    <i class="bi bi-trash"></i>
+                </button>
+            `;
+            container.appendChild(medItem);
+        });
+    }
+
+    // 更新药物名称
+    function updateMedicationName(index, value) {
+        medications[index].name = value;
+    }
+
+    // 删除药物
+    function deleteMedication(index) {
+        if (confirm('确定要删除这个药物吗？')) {
+            medications.splice(index, 1);
+            renderMedicationList();
+
+            // 同时从已选药物中移除
+            const removedMed = medications[index];
+            selectedMedications = selectedMedications.filter(m => m.id !== removedMed.id);
+            renderMedications();
+        }
+    }
+
+    // 添加新药物
+    function addNewMedication() {
+        const newName = document.getElementById('newMedicationName').value.trim();
+        if (!newName) {
+            alert('请输入药物名称');
+            return;
+        }
+
+        // 检查是否已存在
+        if (medications.some(med => med.name === newName)) {
+            alert('该药物已存在');
+            return;
+        }
+
+        // 添加新药物
+        const newId = medications.length > 0 ? Math.max(...medications.map(m => m.id)) + 1 : 1;
+        medications.push({
+            id: newId,
+            name: newName
+        });
+
+        // 清空输入框并重新渲染列表
+        document.getElementById('newMedicationName').value = '';
+        renderMedicationList();
+    }
+
+    // 保存药物列表
+    function saveMedications() {
+        localStorage.setItem('medications', JSON.stringify(medications));
+        renderMedications(); // 更新主界面药物选择器
+        closeMedicationManager();
+        alert('药物列表已更新！');
+    }
+
+    // 切换标签页
+    function switchTab(tab) {
+        // 清除所有表单验证错误
+        clearValidationErrors();
+
+        // 更新标签状态
+        document.getElementById('homeView').style.display = tab === 'home' ? 'block' : 'none';
+        document.getElementById('historyView').style.display = tab === 'history' ? 'block' : 'none';
+        document.getElementById('tabHome').classList.toggle('active', tab === 'home');
+        document.getElementById('tabHistory').classList.toggle('active', tab === 'history');
+
+        // 确保退出多选模式
+        if (tab === 'history') {
+            renderHistory();
+            exitMultiSelectMode();
+        }
+
+        // 滚动到顶部
+        window.scrollTo(0, 0);
+    }
+
+    // 更新顶部日期显示
+    function updateCurrentDate(date) {
+        const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+        document.getElementById('currentDate').textContent = date.toLocaleDateString('zh-CN', options);
+    }
+
+    // 动态添加运动记录项
+    function addExercise() {
+        const exerciseList = document.getElementById('exerciseList');
+        exerciseList.innerHTML += `
+        <div class="exercise-item">
+          <input type="text" placeholder="运动项目" />
+          <input type="number" placeholder="分钟" />
+          <select><option>轻松</option><option>适中</option><option>吃力</option></select>
+          <button class="btn btn-secondary" onclick="deleteExercise(this)">
+            <i class="bi bi-trash"></i> 删除
+          </button>
+        </div>
+      `;
+    }
+
+    // 删除运动记录项
+    function deleteExercise(btn) {
+        btn.closest('.exercise-item').remove();
+    }
+
+    // 表单验证函数
+    function validateFasting() {
+        const value = document.getElementById('fasting').value;
+        const formGroup = document.getElementById('form-group-fasting');
+        const errorElement = document.getElementById('error-fasting');
+
+        if (!value) {
+            formGroup.classList.add('has-error');
+            errorElement.textContent = '请输入早餐空腹血糖值';
+            return false;
+        }
+
+        if (isNaN(parseFloat(value))) {
+            formGroup.classList.add('has-error');
+            errorElement.textContent = '请输入有效的数字';
+            return false;
+        }
+
+        formGroup.classList.remove('has-error');
+        errorElement.textContent = '';
+        return true;
+    }
+
+    function validateBreakfast() {
+        const value = document.getElementById('breakfast').value;
+        const formGroup = document.getElementById('form-group-breakfast');
+        const errorElement = document.getElementById('error-breakfast');
+
+        if (!value) {
+            formGroup.classList.add('has-error');
+            errorElement.textContent = '请输入早餐后2小时血糖值';
+            return false;
+        }
+
+        if (isNaN(parseFloat(value))) {
+            formGroup.classList.add('has-error');
+            errorElement.textContent = '请输入有效的数字';
+            return false;
+        }
+
+        formGroup.classList.remove('has-error');
+        errorElement.textContent = '';
+        return true;
+    }
+
+    function validateLunch() {
+        const value = document.getElementById('lunch').value;
+        const formGroup = document.getElementById('form-group-lunch');
+        const errorElement = document.getElementById('error-lunch');
+
+        if (!value) {
+            formGroup.classList.add('has-error');
+            errorElement.textContent = '请输入午餐后2小时血糖值';
+            return false;
+        }
+
+        if (isNaN(parseFloat(value))) {
+            formGroup.classList.add('has-error');
+            errorElement.textContent = '请输入有效的数字';
+            return false;
+        }
+
+        formGroup.classList.remove('has-error');
+        errorElement.textContent = '';
+        return true;
+    }
+
+    function validateDinner() {
+        const value = document.getElementById('dinner').value;
+        const formGroup = document.getElementById('form-group-dinner');
+        const errorElement = document.getElementById('error-dinner');
+
+        if (!value) {
+            formGroup.classList.add('has-error');
+            errorElement.textContent = '请输入晚餐后2小时血糖值';
+            return false;
+        }
+
+        if (isNaN(parseFloat(value))) {
+            formGroup.classList.add('has-error');
+            errorElement.textContent = '请输入有效的数字';
+            return false;
+        }
+
+        formGroup.classList.remove('has-error');
+        errorElement.textContent = '';
+        return true;
+    }
+
+    function clearValidationErrors() {
+        ['fasting', 'breakfast', 'lunch', 'dinner'].forEach(id => {
+            const formGroup = document.getElementById(`form-group-${id}`);
+            const errorElement = document.getElementById(`error-${id}`);
+            formGroup.classList.remove('has-error');
+            errorElement.textContent = '';
+        });
+    }
+
+    function validateForm() {
+        let isValid = true;
+        if (!validateFasting()) isValid = false;
+        if (!validateBreakfast()) isValid = false;
+        if (!validateLunch()) isValid = false;
+        if (!validateDinner()) isValid = false;
+        return isValid;
+    }
+
+    // 保存记录到本地存储
+    function saveRecord() {
+        // 校验表单
+        if (!validateForm()) {
+            return;
+        }
+
+        // 收集运动记录
+        const exercises = [];
+        document.querySelectorAll('.exercise-item').forEach(item => {
+            const name = item.querySelector('input:nth-child(1)').value;
+            const minutes = item.querySelector('input:nth-child(2)').value;
+            const intensity = item.querySelector('select').value;
+            if (name && minutes) {
+                exercises.push({ name, minutes, intensity });
+            }
+        });
+
+        // 组装记录对象
+        const record = {
+            id: Date.now(), // 为每条记录添加唯一ID
+            date: currentDate.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }),
+            timestamp: currentDate.getTime(),
+            bloodSugar: {
+                fasting: parseFloat(document.getElementById('fasting').value),
+                breakfast: parseFloat(document.getElementById('breakfast').value),
+                lunch: parseFloat(document.getElementById('lunch').value),
+                dinner: parseFloat(document.getElementById('dinner').value)
+            },
+            exercises: exercises,
+            medication: selectedMedications.filter(m => !isNaN(m.quantity) && m.quantity > 0),
+            notes: document.getElementById('notes').value
+        };
+
+        // 存入数组并持久化
+        records.push(record);
+        localStorage.setItem('bloodSugarRecords', JSON.stringify(records));
+
+        // 显示成功提示
+        document.getElementById('saveSuccess').style.display = 'block';
+        setTimeout(() => {
+            document.getElementById('saveSuccess').style.display = 'none';
+            resetForm(); // 保存后重置表单
+        }, 2000);
+
+        // 更新历史记录显示并切换到历史标签页
+        renderHistory();
+        switchTab('history');
+    }
+
+    // 重置表单
+    function resetForm() {
+        clearValidationErrors();
+        document.getElementById('fasting').value = '';
+        document.getElementById('breakfast').value = '';
+        document.getElementById('lunch').value = '';
+        document.getElementById('dinner').value = '';
+        document.getElementById('notes').value = '';
+        document.getElementById('exerciseList').innerHTML = '';
+        selectedMedications = [];
+        renderMedications();
+    }
+
+    // 渲染历史记录（按周分组）
+    function renderHistory() {
+        const historyList = document.getElementById('historyList');
+        const emptyHistory = document.getElementById('emptyHistory');
+
+        // 检查是否有记录
+        if (records.length === 0) {
+            historyList.innerHTML = '';
+            emptyHistory.style.display = 'block';
+            return;
+        }
+
+        emptyHistory.style.display = 'none';
+
+        // 按周分组
+        const weeks = {};
+        records.forEach(record => {
+            const date = new Date(record.timestamp);
+            const weekKey = `${date.getFullYear()}-W${String(getWeekNumber(date)).padStart(2, '0')}`;
+            if (!weeks[weekKey]) weeks[weekKey] = [];
+            weeks[weekKey].push(record);
+        });
+
+        // 遍历周分组渲染
+        historyList.innerHTML = '';
+        for (const weekKey in weeks) {
+            const weekRecords = weeks[weekKey].sort((a, b) => b.timestamp - a.timestamp);
+            const firstDay = new Date(weekRecords[0].timestamp);
+            firstDay.setDate(firstDay.getDate() - firstDay.getDay());
+            const lastDay = new Date(firstDay);
+            lastDay.setDate(lastDay.getDate() + 6);
+
+            const weekHtml = `
+          <div class="history-week">
+            <h3>${firstDay.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' })} -
+                ${lastDay.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' })}</h3>
+            ${weekRecords.map(record => `
+              <div class="history-record ${selectedRecordIds.includes(record.id) ? 'selected' : ''}" data-id="${record.id}"
+                   onclick="${isMultiSelectMode ? 'toggleRecordSelection(this)' : 'toggleRecordDetails(this)'}">
+                <div class="record-header">
+                  <h4>${record.date}</h4>
+                  <i class="bi bi-chevron-down"></i>
+                </div>
+                <div class="record-details">
+                  <div class="form-group">
+                    <label>早餐空腹</label>
+                    <div>${record.bloodSugar.fasting} mmol/L</div>
+                  </div>
+                  <div class="form-group">
+                    <label>早餐后2小时</label>
+                    <div>${record.bloodSugar.breakfast} mmol/L</div>
+                  </div>
+                  <div class="form-group">
+                    <label>午餐后2小时</label>
+                    <div>${record.bloodSugar.lunch} mmol/L</div>
+                  </div>
+                  <div class="form-group">
+                    <label>晚餐后2小时</label>
+                    <div>${record.bloodSugar.dinner} mmol/L</div>
+                  </div>
+                  <div class="form-group">
+                    <label>运动记录</label>
+                    <div>${record.exercises.map(ex => `${ex.name}（${ex.minutes}分钟，${ex.intensity}）`).join('；') || '无'}</div>
+                  </div>
+                  <div class="form-group">
+                    <label>用药情况</label>
+                    <div>${record.medication.map(med => `${med.name} ${med.quantity}${med.unit}`).join('；') || '无'}</div>
+                  </div>
+                  <div class="form-group">
+                    <label>备注</label>
+                    <div>${record.notes || '无'}</div>
+                  </div>
+                </div>
+                <div class="record-actions">
+                  <button class="btn btn-secondary" onclick="copyRecord(${record.id}, event)">
+                    <i class="bi bi-clipboard"></i> 复制
+                  </button>
+                  <button class="btn" onclick="editRecord(${record.id}, event)">
+                    <i class="bi bi-pencil"></i> 编辑
+                  </button>
+                  <button class="btn btn-danger" onclick="deleteRecord(${record.id}, event)">
+                    <i class="bi bi-trash"></i> 删除
+                  </button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+            historyList.innerHTML += weekHtml;
+        }
+
+        // 检查是否需要进入多选模式
+        document.body.classList.toggle('multi-select-mode', isMultiSelectMode);
+    }
+
+    // 获取ISO 8601标准的周数
+    function getWeekNumber(date) {
+        const d = new Date(date);
+        d.setHours(0, 0, 0, 0);
+        d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+        const yearStart = new Date(d.getFullYear(), 0, 1);
+        const weekNumber = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        return weekNumber;
+    }
+
+    // 切换记录详情展开/收起
+    function toggleRecordDetails(el) {
+        if (isMultiSelectMode) return;
+
+        const record = el.closest('.history-record');
+        const isExpanded = record.classList.contains('expanded');
+
+        // 收起所有记录
+        document.querySelectorAll('.history-record').forEach(r => {
+            r.classList.remove('expanded');
+            r.querySelector('.bi').classList.remove('bi-chevron-up');
+            r.querySelector('.bi').classList.add('bi-chevron-down');
+        });
+
+        // 展开或收起当前记录
+        if (!isExpanded) {
+            record.classList.add('expanded');
+            record.querySelector('.bi').classList.remove('bi-chevron-down');
+            record.querySelector('.bi').classList.add('bi-chevron-up');
+        }
+    }
+
+    // 长按进入多选模式
+    document.addEventListener('contextmenu', function(e) {
+        if (e.target.closest('.history-record') && !isMultiSelectMode) {
+            e.preventDefault();
+            startMultiSelectMode();
+            toggleRecordSelection(e.target.closest('.history-record'));
+        }
+    }, false);
+
+    // 开始多选模式
+    function startMultiSelectMode() {
+        isMultiSelectMode = true;
+        selectedRecordIds = [];
+        document.body.classList.add('multi-select-mode');
+        document.getElementById('multiSelectActionBar').classList.add('active');
+
+        // 收起所有记录详情
+        document.querySelectorAll('.history-record').forEach(r => {
+            r.classList.remove('expanded');
+            r.querySelector('.bi').classList.remove('bi-chevron-up');
+            r.querySelector('.bi').classList.add('bi-chevron-down');
+        });
+    }
+
+    // 退出多选模式
+    function exitMultiSelectMode() {
+        isMultiSelectMode = false;
+        selectedRecordIds = [];
+        document.body.classList.remove('multi-select-mode');
+        document.getElementById('multiSelectActionBar').classList.remove('active');
+    }
+
+    // 切换记录选择状态
+    function toggleRecordSelection(el) {
+        const id = parseInt(el.getAttribute('data-id'));
+        el.classList.toggle('selected');
+
+        if (el.classList.contains('selected')) {
+            selectedRecordIds.push(id);
+        } else {
+            selectedRecordIds = selectedRecordIds.filter(selectedId => selectedId !== id);
+        }
+
+        // 如果没有选中项，退出多选模式
+        if (selectedRecordIds.length === 0) {
+            exitMultiSelectMode();
+        }
+    }
+
+    // 删除选中的记录
+    function deleteSelectedRecords() {
+        if (selectedRecordIds.length === 0) {
+            alert('请先选择要删除的记录！');
+            return;
+        }
+
+        if (confirm(`确定要删除选中的 ${selectedRecordIds.length} 条记录吗？`)) {
+            records = records.filter(record => !selectedRecordIds.includes(record.id));
+            localStorage.setItem('bloodSugarRecords', JSON.stringify(records));
+            exitMultiSelectMode();
+            renderHistory();
+        }
+    }
+
+    // 删除单条记录
+    function deleteRecord(id, event) {
+        event.stopPropagation();
+
+        const index = records.findIndex(r => r.id === id);
+        if (index === -1) return;
+
+        if (confirm('确定要删除这条记录吗？')) {
+            records.splice(index, 1);
+            localStorage.setItem('bloodSugarRecords', JSON.stringify(records));
+            renderHistory();
+        }
+    }
+
+    // 编辑单条记录
+    function editRecord(id, event) {
+        event.stopPropagation();
+
+        const index = records.findIndex(r => r.id === id);
+        if (index === -1) return;
+
+        selectedRecordIndex = index;
+        originalRecord = JSON.parse(JSON.stringify(records[index]));
+        selectedMedications = [...records[index].medication];
+
+        // 创建编辑表单
+        const record = records[index];
+        const editFormHtml = `
+        <div class="form-group">
+          <label>日期</label>
+          <input type="date" id="edit-date" value="${formatDateForInput(record.timestamp)}" />
+        </div>
+        <div class="form-group">
+          <label>早餐空腹</label>
+          <input type="number" step="0.1" id="edit-fasting" value="${record.bloodSugar.fasting}" />
+        </div>
+        <div class="form-group">
+          <label>早餐后2小时</label>
+          <input type="number" step="0.1" id="edit-breakfast" value="${record.bloodSugar.breakfast}" />
+        </div>
+        <div class="form-group">
+          <label>午餐后2小时</label>
+          <input type="number" step="0.1" id="edit-lunch" value="${record.bloodSugar.lunch}" />
+        </div>
+        <div class="form-group">
+          <label>晚餐后2小时</label>
+          <input type="number" step="0.1" id="edit-dinner" value="${record.bloodSugar.dinner}" />
+        </div>
+        <div class="form-group">
+          <label>运动记录</label>
+          <div id="edit-exercise-list">
+            ${record.exercises.map((ex, index) => `
+              <div class="exercise-item">
+                <input type="text" placeholder="运动项目" value="${ex.name}" />
+                <input type="number" placeholder="分钟" value="${ex.minutes}" />
+                <select>
+                  <option ${ex.intensity === '轻松' ? 'selected' : ''}>轻松</option>
+                  <option ${ex.intensity === '适中' ? 'selected' : ''}>适中</option>
+                  <option ${ex.intensity === '吃力' ? 'selected' : ''}>吃力</option>
+                </select>
+                <button class="btn btn-secondary" onclick="deleteEditExercise(this)">
+                  <i class="bi bi-trash"></i> 删除
+                </button>
+              </div>
+            `).join('')}
+          </div>
+          <button class="btn btn-secondary" onclick="addEditExercise()">
+            <i class="bi bi-plus-circle"></i> 添加运动
+          </button>
+        </div>
+        <div class="form-group">
+          <label>用药情况</label>
+          <div id="edit-medication-container">
+            <!-- 用药情况将动态生成 -->
+          </div>
+          <button class="add-medication-btn" onclick="openMedicationManager()">
+            <i class="bi bi-plus-circle"></i> 管理药物
+          </button>
+        </div>
+        <div class="form-group">
+          <label>备注</label>
+          <textarea id="edit-notes" rows="3">${record.notes}</textarea>
+        </div>
+      `;
+
+        document.getElementById('editRecordForm').innerHTML = editFormHtml;
+        document.getElementById('editRecordModal').style.display = 'flex';
+
+        // 渲染编辑表单中的药物选择器
+        renderMedications('edit-medication-container');
+    }
+
+    // 格式化日期为YYYY-MM-DD格式
+    function formatDateForInput(timestamp) {
+        const date = new Date(timestamp);
+        return date.toISOString().split('T')[0];
+    }
+
+    // 添加编辑表单中的运动项
+    function addEditExercise() {
+        const exerciseList = document.getElementById('edit-exercise-list');
+        exerciseList.innerHTML += `
+        <div class="exercise-item">
+          <input type="text" placeholder="运动项目" />
+          <input type="number" placeholder="分钟" />
+          <select><option>轻松</option><option>适中</option><option>吃力</option></select>
+          <button class="btn btn-secondary" onclick="deleteEditExercise(this)">
+            <i class="bi bi-trash"></i> 删除
+          </button>
+        </div>
+      `;
+    }
+
+    // 删除编辑表单中的运动项
+    function deleteEditExercise(btn) {
+        btn.closest('.exercise-item').remove();
+    }
+
+    // 关闭编辑模态框
+    function closeEditModal() {
+        document.getElementById('editRecordModal').style.display = 'none';
+        originalRecord = null;
+    }
+
+    // 更新记录
+    function updateRecord() {
+        if (selectedRecordIndex === -1 || !originalRecord) return;
+
+        // 获取表单值
+        const dateInput = document.getElementById('edit-date');
+        const fasting = document.getElementById('edit-fasting').value;
+        const breakfast = document.getElementById('edit-breakfast').value;
+        const lunch = document.getElementById('edit-lunch').value;
+        const dinner = document.getElementById('edit-dinner').value;
+
+        // 校验必填项
+        if (!fasting || !breakfast || !lunch || !dinner) {
+            alert('请填写完整血糖数据！');
+            return;
+        }
+
+        // 收集运动记录
+        const exercises = [];
+        document.querySelectorAll('#edit-exercise-list .exercise-item').forEach(item => {
+            const name = item.querySelector('input:nth-child(1)').value;
+            const minutes = item.querySelector('input:nth-child(2)').value;
+            const intensity = item.querySelector('select').value;
+            if (name && minutes) {
+                exercises.push({ name, minutes, intensity });
+            }
+        });
+
+        // 更新记录
+        const updatedRecord = {
+            ...originalRecord,
+            date: new Date(dateInput.value).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }),
+            timestamp: new Date(dateInput.value).getTime(),
+            bloodSugar: {
+                fasting: parseFloat(fasting),
+                breakfast: parseFloat(breakfast),
+                lunch: parseFloat(lunch),
+                dinner: parseFloat(dinner)
+            },
+            exercises: exercises,
+            medication: selectedMedications.filter(m => !isNaN(m.quantity) && m.quantity > 0),
+            notes: document.getElementById('edit-notes').value
+        };
+
+        records[selectedRecordIndex] = updatedRecord;
+        localStorage.setItem('bloodSugarRecords', JSON.stringify(records));
+
+        closeEditModal();
+        renderHistory();
+
+        alert('记录已更新！');
+    }
+
+    // 复制单条记录为文本
+    function copyRecord(id, event) {
+        event.stopPropagation();
+
+        const record = records.find(r => r.id === id);
+        if (!record) return;
+
+        const recordText = formatRecordAsText(record);
+        copyToClipboard(recordText);
+    }
+
+    // 复制选中的记录为文本
+    function copySelectedRecords() {
+        if (selectedRecordIds.length === 0) {
+            alert('请先选择要复制的记录！');
+            return;
+        }
+
+        const selectedRecords = records.filter(record => selectedRecordIds.includes(record.id));
+        const allRecordsText = selectedRecords.map(record => formatRecordAsText(record)).join('\n\n');
+
+        copyToClipboard(allRecordsText);
+        exitMultiSelectMode();
+    }
+
+    // 通用复制到剪贴板函数
+    function copyToClipboard(text) {
+        const textarea = document.getElementById('copyHelper');
+        textarea.value = text;
+        textarea.select();
+
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) {
+                showCopySuccess();
+            } else {
+                navigator.clipboard.writeText(text).then(() => {
+                    showCopySuccess();
+                }).catch(err => {
+                    console.error('复制失败: ', err);
+                    alert('复制失败，请手动复制。');
+                });
+            }
+        } catch (err) {
+            console.error('复制失败: ', err);
+            alert('复制失败，请手动复制。');
+        }
+    }
+
+    // 将记录格式化为文本
+    function formatRecordAsText(record) {
+        let text = `【${record.date}】\n`;
+        text += `早餐空腹：${record.bloodSugar.fasting} mmol/L\n`;
+        text += `早餐后2小时：${record.bloodSugar.breakfast} mmol/L\n`;
+        text += `午餐后2小时：${record.bloodSugar.lunch} mmol/L\n`;
+        text += `晚餐后2小时：${record.bloodSugar.dinner} mmol/L\n`;
+
+        if (record.exercises.length > 0) {
+            text += `运动：${record.exercises.map(ex => `${ex.name}（${ex.minutes}分钟，${ex.intensity}）`).join('；')}\n`;
+        }
+
+        if (record.medication && record.medication.length > 0) {
+            text += `用药：${record.medication.map(med => `${med.name} ${med.quantity}${med.unit}`).join('；')}\n`;
+        }
+
+        if (record.notes) {
+            text += `备注：${record.notes}\n`;
+        }
+
+        return text;
+    }
+
+    // 显示复制成功提示
+    function showCopySuccess() {
+        const copySuccess = document.getElementById('copySuccess');
+        copySuccess.classList.add('show');
+        setTimeout(() => {
+            copySuccess.classList.remove('show');
+        }, 2000);
+    }
+</script>
+</body>
+</html>
